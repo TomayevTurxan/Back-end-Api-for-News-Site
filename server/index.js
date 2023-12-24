@@ -1,31 +1,45 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
-require('dotenv').config();
-const newsSiteUserData = require("./users.js")
+require("dotenv").config();
+// const newsSiteUserData = require("./users.js")
+const mongoose = require("mongoose");
+const cors = require("cors");
 const app = express();
 app.use(bodyParser.json());
-
+app.use(cors());
 const PORT = process.env.PORT || 3031;
 
+//Users Schema
+
+const UsersSchema = new mongoose.Schema({
+  username: String,
+  fullName: String,
+  profileImg: String,
+  email: String,
+  password: String,
+  isAdmin: Boolean,
+});
+const UserModel = mongoose.model("User", UsersSchema);
 
 // get all users
-app.get("/api/users", (req, res) => {
-  if (newsSiteUserData.length == 0) {
+app.get("/api/users", async (req, res) => {
+  const users = await UserModel.find({});
+  if (users.length == 0) {
     res.status(204).send({
       message: "empty array",
     });
   } else {
     res.status(200).send({
       message: "succes",
-      data: newsSiteUserData,
+      data: users,
     });
   }
 });
 //users id
-app.get("/api/users/:id", (req, res) => {
+app.get("/api/users/:id", async (req, res) => {
   const { id } = req.params;
-  const data = newsSiteUserData.find((x) => x.id == id);
+  const data = await UserModel.findById(id);
   if (data !== undefined) {
     res.status(200).send(data);
   } else {
@@ -33,110 +47,75 @@ app.get("/api/users/:id", (req, res) => {
   }
 });
 //users delete
-app.delete("/api/users/:id", (req, res) => {
+app.delete("/api/users/:id", async (req, res) => {
   const { id } = req.params;
-  const idx = newsSiteUserData.findIndex((x) => x.id == id);
-  if (idx === -1) {
+  const deletedUser = await UserModel.findByIdAndDelete(id);
+  const users = await UserModel.find({});
+  if (deletedUser === -1) {
     res.send({
       message: "data not found!",
     });
   } else {
     res.status(200).send({
       message: "data deleted successfully",
-      data: newsSiteUserData.splice(idx, 1),
+      data: users,
     });
   }
 });
 
 //post user
-app.post("/api/users", (req, res) => {
-  const { username, fullName, profileImg, email, password, isAdmin } = req.body;
-  const newUser = {
-    id: crypto.randomUUID(),
-    username,
-    fullName,
-    profileImg,
-    email,
-    password,
-    isAdmin,
-  };
-  newsSiteUserData.push(newUser);
+app.post("/api/users", async (req, res) => {
+  const newUser = new UserModel(req.body);
+  await newUser.save();
   res.status(201).send({
     message: "data posted successfully",
     data: newUser,
   });
 });
 
+//user patch
+app.patch ("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  await UserModel.findByIdAndUpdate(id, req.body);
+  const updatedUser = await UserModel.findById(id)
+  res.send(updatedUser);
 
-//user put
-app.put('/api/users/:id',(req,res)=>{
-    const{id}= req.params;
-    const {username, fullName, profileImg, email, password, isAdmin} = req.body;
-    const data = newsSiteUserData.find((x)=>x.id==id);
-    const updatedData = {
-        id: data.id
-    };
-    if (username!==undefined) {
-        updatedData.username = username;
-    }
-    if (fullName!==undefined) {
-        updatedData.fulfullName =fullName
-    }
-    if (profileImg!==undefined) {
-        updatedData.profileImg = profileImg;
-    }
-    if (email!==undefined) {password
-        updatedData.email = email;
-    }
-    if (password!=undefined) {
-        updatedData.password = password;
-    }
-    if (isAdmin!==undefined) {
-        updatedData.isAdmin = isAdmin;
-    }
+});
 
-    const idx = newsSiteUserData.findIndex((x)=>x.id==id);
-    newsSiteUserData[idx] = updatedData;
+//put user
+// app.patch("/api/users/:id", (req, res) => {
+//   const { id } = req.params;
+//   const { username, fullName, profileImg, email, password, isAdmin } = req.body;
+//   const data = newsSiteUserData.find((x) => x.id == id);
 
-    res.send({
-        message:'data updated successfully!',
-        data: updatedData
-    })
-})
+//   if (username !== undefined) {
+//     data.username = username;
+//   }
+//   if (fullName !== undefined) {
+//     data.fullName = fullName;
+//   }
+//   if (profileImg !== undefined) {
+//     data.profileImg = profileImg;
+//   }
+//   if (email !== undefined) {
+//     data.email = email;
+//   }
+//   if (password != undefined) {
+//     data.password = password;
+//   }
+//   if (isAdmin !== undefined) {
+//     data.isAdmin = isAdmin;
+//   }
 
-
-
-//patch user
-app.patch('/api/users/:id',(req,res)=>{
-    const{id}= req.params;
-    const {username, fullName, profileImg, email, password, isAdmin} = req.body;
-    const data = newsSiteUserData.find((x)=>x.id==id);
-
-    if (username!==undefined) {
-        data.username = username;
-    }
-    if (fullName!==undefined) {
-        data.fullName =fullName
-    }
-    if (profileImg!==undefined) {
-        data.profileImg = profileImg;
-    }
-    if (email!==undefined) {
-        data.email = email;
-    }
-    if (password!=undefined) {
-        data.password = password;
-    }
-    if (isAdmin!==undefined) {
-        data.isAdmin = isAdmin;
-    }
-    
-    res.send({
-        message: 'data updated successfully!',
-        data
-    })
-})
+//   res.send({
+//     message: "data updated successfully!",
+//     data,
+//   });
+// });
 
 app.listen(PORT, () => {
   console.log(`app listening on PORT:${PORT}`);
 });
+
+mongoose.connect(process.env.DB_CONNECTION_KEY.replace('<password>',process.env.DB_PASSWORD))
+.then(() => console.log('Connected to Mongo DB!'));

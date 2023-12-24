@@ -1,11 +1,11 @@
 const newsSiteUserData = [
   {
     id: 1,
-    username: "user1",
+    username: "turxan",
     fullName: "User One",
     profileImg: "user1.jpg",
     email: "user1@example.com",
-    password: "hashed_password",
+    password: "turxan123",
     isAdmin: false,
   },
   {
